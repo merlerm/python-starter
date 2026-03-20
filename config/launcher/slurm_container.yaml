@@ -1,0 +1,8 @@
+# @package _global_
+defaults:
+  - override /hydra/launcher: submitit_slurm
+
+hydra:
+  launcher:
+    _target_: hydra_plugins.container_launcher.launcher.ContainerSlurmLauncher
+    python: ./bin/python-container

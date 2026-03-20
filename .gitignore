@@ -149,6 +149,9 @@ dmypy.json
 outputs/
 multirun/
 
+# Apptainer/Singularity container images
+*.sif
+
 # Pyre type checker
 .pyre/
 

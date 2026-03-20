@@ -1,0 +1,23 @@
+Bootstrap: docker
+From: python:3.10-slim
+
+# For GPU workloads, consider a CUDA base image instead:
+# Bootstrap: docker
+# From: nvidia/cuda:12.1.0-runtime-ubuntu22.04
+
+# %post runs during container build (apptainer build container.sif container.def).
+# Install system packages and tools needed by your project here.
+%post
+    # Install common build dependencies:
+    # - build-essential: C/C++ compiler toolchain (gcc, make, etc.),
+    #   needed by Python packages with C extensions (e.g. numpy)
+    # - git: needed by pip to install packages from git repositories
+    apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        git \
+    && rm -rf /var/lib/apt/lists/*  # clean apt cache to reduce image size
+
+    pip install --no-cache-dir --upgrade pip
+
+%labels
+    Author python-starter

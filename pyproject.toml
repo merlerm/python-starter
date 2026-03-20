@@ -58,6 +58,7 @@ exclude = ["venv/*", ".venv/*"]
 [[tool.mypy.overrides]]
 module = [
     "hydra.*",
+    "hydra_plugins.hydra_submitit_launcher.*",
     "matplotlib.*",
     "omegaconf.*",
     "submitit.*",

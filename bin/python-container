@@ -1,0 +1,44 @@
+#!/bin/bash
+# Drop-in Python executable that runs inside an Apptainer container.
+#
+# When used with the ContainerSlurmLauncher, submitit calls this script
+# instead of the system Python:
+#   srun ... bin/python-container -u -m submitit.core._submit /folder
+#
+# This script delegates to:
+#   apptainer exec container.sif .venv/bin/python "$@"
+#
+# Customize the bind mounts and environment variables below for your
+# cluster.
+
+set -euo pipefail
+
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+CONTAINER="${CONTAINER_SIF:-${PROJECT_DIR}/container.sif}"
+VENV_PYTHON="${PROJECT_DIR}/.venv/bin/python"
+
+# --- Checks ---
+if [ ! -f "${CONTAINER}" ]; then
+    echo "ERROR: Container not found: ${CONTAINER}" >&2
+    echo "Build it with: apptainer build container.sif container.def" >&2
+    exit 1
+fi
+
+# --- Bind mounts ---
+# Bind mounts make host directories visible inside the container.
+# Add cluster-specific paths here, e.g.:
+#   EXTRA_BINDS="--bind /scratch:/scratch --bind /data:/data"
+EXTRA_BINDS=""
+
+# --- Execute inside container ---
+# --nv: expose NVIDIA GPUs and drivers to the container (remove if
+#       you don't need GPU access)
+# --bind: mount the project directory so the code is available inside
+# --pwd: set the working directory inside the container
+exec apptainer exec \
+    --nv \
+    --bind "${PROJECT_DIR}:${PROJECT_DIR}" \
+    ${EXTRA_BINDS} \
+    --pwd "${PROJECT_DIR}" \
+    "${CONTAINER}" \
+    "${VENV_PYTHON}" "$@"

@@ -13,6 +13,7 @@ A package built from this starter code will have the following features:
 - **Type checking** with mypy (see `pyproject.toml`)
 - **Unit tests** with pytest (see `tests/`)
 - **Config management** with [Hydra](https://hydra.cc/) (see `config/` and `src/python_starter/main.py`)
+- **Container support** with [Apptainer/Singularity](https://apptainer.org/) for cluster environments (see `container.def` and `bin/python-container`). Some clusters still use Singularity; Apptainer is a drop-in replacement (just swap `apptainer` for `singularity` in the commands).
 
 ## Instructions
 
@@ -55,10 +56,10 @@ A package built from this starter code will have the following features:
 This starter includes [Hydra](https://hydra.cc/) for configuration management with launcher plugins for parallel and cluster execution. Configs are type-checked at runtime via [structured configs](https://hydra.cc/docs/tutorials/structured_config/schema/).
 
 ### Config Structure
-- `config/config.yaml` — Main config file. Add your parameters here.
-- `config/launcher/joblib.yaml` — [Joblib launcher](https://hydra.cc/docs/plugins/joblib_launcher/) for parallel local jobs.
-- `config/launcher/slurm.yaml` — [Submitit launcher](https://hydra.cc/docs/plugins/submitit_launcher/) for SLURM cluster jobs.
-- `src/python_starter/config.py` — Structured config dataclass for type checking. Keep this in sync with `config.yaml`.
+- `config/config.yaml`: Main config file. Add your parameters here.
+- `config/launcher/joblib.yaml`: [Joblib launcher](https://hydra.cc/docs/plugins/joblib_launcher/) for parallel local jobs.
+- `config/launcher/slurm.yaml`: [Submitit launcher](https://hydra.cc/docs/plugins/submitit_launcher/) for SLURM cluster jobs.
+- `src/python_starter/config.py`: Structured config dataclass for type checking. Keep this in sync with `config.yaml`.
 
 ### Usage
 
@@ -144,6 +145,47 @@ Switch between variants from the command line:
 ```bash
 python src/python_starter/main.py model=large
 ```
+
+## Apptainer / Singularity Containers
+
+This starter includes scaffolding for running jobs inside [Apptainer](https://apptainer.org/) containers on SLURM clusters. This is useful when cluster nodes don't have the system libraries or drivers your project needs.
+
+### Files
+- `container.def`: Container definition file. Customize the base image and system packages for your project.
+- `bin/python-container`: Wrapper script that acts as a drop-in Python executable, running inside the container. Customize bind mounts and environment variables for your cluster.
+- `hydra_plugins/container_launcher/`: Custom Hydra launcher plugin that tells submitit to use `bin/python-container` instead of the system Python.
+- `config/launcher/slurm_container.yaml`: Launcher config that uses the container plugin.
+
+### Building the Container
+
+```bash
+apptainer build container.sif container.def
+```
+
+On clusters where you don't have root, use `--fakeroot` or build remotely with `--remote` and copy the `.sif` file over.
+
+### Running with the Container
+
+Run a sweep on SLURM inside the container:
+```bash
+python src/python_starter/main.py --multirun +launcher=slurm_container seed=1,2,3
+```
+
+For a single SLURM job, use `--multirun` with one value (Hydra launchers only activate in multirun mode):
+```bash
+python src/python_starter/main.py --multirun +launcher=slurm_container seed=42
+```
+
+Or run directly without Hydra's launcher:
+```bash
+bin/python-container src/python_starter/main.py seed=42
+```
+
+### Customizing for Your Cluster
+
+1. **Edit `container.def`**: Change the base image (e.g., `nvidia/cuda:12.1.0-runtime-ubuntu22.04` for GPU workloads) and add system packages.
+2. **Edit `bin/python-container`**: Add bind mounts for cluster-specific paths (shared filesystems, data directories) and environment variables.
+3. **Edit `config/launcher/slurm_container.yaml`**: Add SLURM parameters (partition, memory, GPUs, etc.) or create cluster-specific variants that inherit from it.
 
 ## Notes
 - Branch protections only work if you have a public repository or an Enterprise account.
