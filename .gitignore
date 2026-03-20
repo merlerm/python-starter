@@ -145,6 +145,10 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
+# Hydra outputs
+outputs/
+multirun/
+
 # Pyre type checker
 .pyre/
 

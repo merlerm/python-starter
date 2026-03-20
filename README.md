@@ -12,6 +12,7 @@ A package built from this starter code will have the following features:
 - **Linting** with pytest-pylint (see `.pylintrc`)
 - **Type checking** with mypy (see `pyproject.toml`)
 - **Unit tests** with pytest (see `tests/`)
+- **Config management** with [Hydra](https://hydra.cc/) (see `config/` and `src/python_starter/main.py`)
 
 ## Instructions
 
@@ -28,8 +29,8 @@ A package built from this starter code will have the following features:
 
 ### Common Next Steps
 6. **Make changes** to `pyproject.toml`, especially in the dependencies section.
-7. **Install your repository**: `pip install -e ".[develop]"` (recommended: use a virtualenv).
-8. **Replace the starter files** (`README.md`, `LICENSE`, `config.json`, `apply_configuration.py`, `structs.py`, `utils.py` and the analogous files in `tests/`) with some of your own.
+7. **Set up a virtual environment and install**: Using [uv](https://docs.astral.sh/uv/) (recommended): `uv venv && uv sync --all-extras --dev`. Alternatively: `python -m venv .venv && source .venv/bin/activate && pip install -e ".[develop]"`.
+8. **Replace the starter files** (`README.md`, `LICENSE`, `config.json`, `apply_configuration.py`, `main.py`, `config.py`, `structs.py`, `utils.py` and the analogous files in `tests/`) with some of your own.
 
 ### Configure GitHub (Optional but Recommended)
 9. **Set up branch protections** to prevent accidental changes to your main branch. In `https://github.com/<USER>/<NAME>/settings/branches`:
@@ -48,6 +49,101 @@ A package built from this starter code will have the following features:
 11. **Set up contributor settings** to lower the barrier for external contributions. In `https://github.com/<USER>/<NAME>/settings/actions`:
     - Update "Fork pull request workflows from outside collaborators" to "Require approval for first-time contributors who are new to GitHub".
 
+
+## Hydra Config Management
+
+This starter includes [Hydra](https://hydra.cc/) for configuration management with launcher plugins for parallel and cluster execution. Configs are type-checked at runtime via [structured configs](https://hydra.cc/docs/tutorials/structured_config/schema/).
+
+### Config Structure
+- `config/config.yaml` — Main config file. Add your parameters here.
+- `config/launcher/joblib.yaml` — [Joblib launcher](https://hydra.cc/docs/plugins/joblib_launcher/) for parallel local jobs.
+- `config/launcher/slurm.yaml` — [Submitit launcher](https://hydra.cc/docs/plugins/submitit_launcher/) for SLURM cluster jobs.
+- `src/python_starter/config.py` — Structured config dataclass for type checking. Keep this in sync with `config.yaml`.
+
+### Usage
+
+Run with the default config:
+```bash
+python src/python_starter/main.py
+```
+
+Override a parameter:
+```bash
+python src/python_starter/main.py seed=123
+```
+
+Run a sweep with parallel local execution (joblib):
+```bash
+python src/python_starter/main.py --multirun +launcher=joblib seed=1,2,3
+```
+
+Run a sweep on a SLURM cluster:
+```bash
+python src/python_starter/main.py --multirun +launcher=slurm seed=1,2,3
+```
+
+### Adding Nested Config Groups
+
+To organize configs into groups (e.g., `model`), create a subdirectory under `config/` with one YAML file per variant:
+
+```text
+config/
+  config.yaml
+  model/
+    small.yaml
+    large.yaml
+```
+
+Each YAML file defines the values for that variant and references a group schema for type checking. In `config/model/small.yaml`:
+```yaml
+defaults:
+  - model_schema
+
+hidden_size: 128
+num_layers: 2
+```
+
+In `config/model/large.yaml`:
+```yaml
+defaults:
+  - model_schema
+
+hidden_size: 512
+num_layers: 8
+```
+
+Reference a default variant in `config/config.yaml`:
+```yaml
+defaults:
+  - config_schema
+  - model: small
+  - _self_
+
+seed: 42
+```
+
+Add structured configs in `src/python_starter/config.py` and register both the top-level and group schemas. The structured config defines the schema (field names and types); the YAML files provide the actual values:
+```python
+@dataclass
+class ModelConfig:
+    hidden_size: int = MISSING
+    num_layers: int = MISSING
+
+@dataclass
+class Config:
+    seed: int = 42
+    model: ModelConfig = MISSING
+
+def register_configs() -> None:
+    config_store = ConfigStore.instance()
+    config_store.store(name="config_schema", node=Config)
+    config_store.store(group="model", name="model_schema", node=ModelConfig)
+```
+
+Switch between variants from the command line:
+```bash
+python src/python_starter/main.py model=large
+```
 
 ## Notes
 - Branch protections only work if you have a public repository or an Enterprise account.

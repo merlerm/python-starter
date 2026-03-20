@@ -9,6 +9,9 @@ description = "A basic starter for Python packages."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+   "hydra-core",
+   "hydra-joblib-launcher",
+   "hydra-submitit-launcher",
    "matplotlib",
    "numpy",
 ]
@@ -54,6 +57,9 @@ exclude = ["venv/*", ".venv/*"]
 
 [[tool.mypy.overrides]]
 module = [
+    "hydra.*",
     "matplotlib.*",
+    "omegaconf.*",
+    "submitit.*",
 ]
 ignore_missing_imports = true
