@@ -1287,7 +1287,7 @@ requires-dist = [
     { name = "mypy", marker = "extra == 'develop'" },
     { name = "numpy" },
     { name = "pylint", marker = "extra == 'develop'", specifier = ">=2.14.5" },
-    { name = "pytest", marker = "extra == 'develop'", specifier = ">=7.2.2" },
+    { name = "pytest", marker = "extra == 'develop'", specifier = ">=7.2.2,<9.1" },
     { name = "pytest-pylint", marker = "extra == 'develop'", specifier = ">=0.18.0" },
 ]
 provides-extras = ["develop"]
