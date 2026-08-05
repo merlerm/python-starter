@@ -7,7 +7,17 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
+
+# This runs before the project venv exists, on whatever interpreter the user
+# invokes, so check the version rather than failing later on modern syntax.
+if sys.version_info < (3, 10):
+    raise SystemExit(
+        f"This script needs Python 3.10 or newer, but is running on "
+        f"{sys.version.split()[0]}. Try `uv run --no-project --python 3.12 "
+        f"python apply_configuration.py`."
+    )
 
 
 def _multi_replace(substitutions: dict[str, str], text: str) -> str:
@@ -75,15 +85,18 @@ def _main() -> None:
     # Get the repository name from this directory.
     repo_name = outer_dir.name
 
-    # Delete the existing git files if they are from the starter repo.
+    # Delete the existing git files if they are from the starter repo. The owner
+    # is matched loosely so that clones of forks are recognized too; otherwise
+    # the new project silently inherits the whole starter history.
     git_repo = outer_dir / ".git"
     if git_repo.exists():
         git_config_file = git_repo / "config"
         with open(git_config_file, "r", encoding="utf-8") as fp:
             git_config_contents = fp.read()
-        if "git@github.com:tomsilver/python-starter.git" in git_config_contents:
-            shutil.rmtree(git_repo)
-        elif "https://github.com/tomsilver/python-starter.git" in git_config_contents:
+        starter_remote = re.compile(
+            r"github\.com[:/][\w.-]+/python-starter(\.git)?/?\s*$", re.MULTILINE
+        )
+        if starter_remote.search(git_config_contents):
             shutil.rmtree(git_repo)
 
     # Initialize the repo anew.
@@ -126,8 +139,17 @@ def _main() -> None:
         "3.10": f"3.{python_subversion}",
         "310": f"3{python_subversion}",
     }
+    # uv.lock is excluded because the Python version substitution would rewrite
+    # the cp310 tags inside wheel URLs while leaving their hashes untouched,
+    # pointing every entry at a file that does not exist. uv re-resolves it on
+    # the next sync anyway, since the project name and Python version change.
     _replace_all_occurences(
-        substitutions, exclude={outer_dir / "apply_configuration.py", config_file}
+        substitutions,
+        exclude={
+            outer_dir / "apply_configuration.py",
+            config_file,
+            outer_dir / "uv.lock",
+        },
     )
 
     # Rename the package repo.
