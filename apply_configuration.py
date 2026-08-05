@@ -139,8 +139,17 @@ def _main() -> None:
         "3.10": f"3.{python_subversion}",
         "310": f"3{python_subversion}",
     }
+    # uv.lock is excluded because the Python version substitution would rewrite
+    # the cp310 tags inside wheel URLs while leaving their hashes untouched,
+    # pointing every entry at a file that does not exist. uv re-resolves it on
+    # the next sync anyway, since the project name and Python version change.
     _replace_all_occurences(
-        substitutions, exclude={outer_dir / "apply_configuration.py", config_file}
+        substitutions,
+        exclude={
+            outer_dir / "apply_configuration.py",
+            config_file,
+            outer_dir / "uv.lock",
+        },
     )
 
     # Rename the package repo.
